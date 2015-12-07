@@ -1,9 +1,9 @@
 # -*- coding:utf-8 -*-
 
 result_path_list = [
-r'/root/tmp/ydh-1127Round1-index_ptest_monitor_statistical_data_201512071132',
-r'/root/tmp/ydh-1127Round1-index_ptest_monitor_statistical_data_201512071127',
-r'/root/tmp/ydh-1127Round1-index_lr_statistical_data_201512071124']
+r'path1',
+r'path2',
+r'path3']
 scenario_name = u"场景名称"
 version = u"v1.0.0"
 scenario_explain = u"""1. 说明1
