@@ -57,7 +57,7 @@ report_lr_title2 = """
         <th colspan="4">事务</th>
         <th>通过事务数</th>
         <th>平均响应时间(s)</th>
-        <th>90%响应时间(s)</th>
+        <th>90%%响应时间(s)</th>
         <th>点击率</th>
         <th>成功率</th>
     </tr>
