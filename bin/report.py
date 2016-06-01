@@ -8,10 +8,15 @@ import ConfigParser
 
 import util
 from ftplib import FTP
-from template import *
+from jinja2 import Environment, FileSystemLoader
 
 reload(sys)
-sys.setdefaultencoding('utf8')  
+sys.setdefaultencoding('utf8')
+
+
+env = Environment(loader=FileSystemLoader('./templates'))
+template = env.get_template('report.html')
+
 
 def clean_tmp_dir():
     shutil.rmtree('../tmp')
@@ -21,25 +26,26 @@ def clean_tmp_dir():
     shutil.copy('../resource/bootstrap.min.js', '../tmp/resource')
     shutil.copy('../resource/jquery.min.js', '../tmp/resource')
 
+
 def get_data_from_path(result_path_list):
     ignore_png = ['bgnav.png', 'dot_pewter.png', 'lab_analreports.png',
-            'logo_lr.png', 'LR_anal_reports.png', 'tbic_toexcel.png', 'top_grad.png']
+                  'logo_lr.png', 'LR_anal_reports.png', 'tbic_toexcel.png', 'top_grad.png']
     html_body_list = []
     for path in result_path_list:
-        for parent,dirnames,filenames in os.walk(path):
+        for parent, dirnames, filenames in os.walk(path):
             for filename in filenames:
                 if filename in ignore_png:
                     continue
                 if filename.endswith('.png'):
                     shutil.copy(os.path.join(parent, filename), '../tmp/resource')
-                if filename.find('monitor_statistical_data') != -1 and filename.endswith('.html'):
+                if filename.find('monitor') != -1 and filename.endswith('.html'):
                     html_body = ''
                     with open(os.path.join(parent, filename), 'r') as f:
                         for line in f.readlines():
                             html_body += line
 
                     html_body_list.append({'type': 'performance_monitor', 'html_body': html_body})
-                if filename.find('lr_statistical_data') != -1 and filename.endswith('.html'):
+                if filename.find('lr') != -1 and filename.endswith('.html'):
                     html_body = ''
                     with open(os.path.join(parent, filename), 'r') as f:
                         for line in f.readlines():
@@ -47,18 +53,19 @@ def get_data_from_path(result_path_list):
                     html_body_list.append({'type': 'lr_report', 'html_body': html_body})
     return html_body_list
 
+
 def decorate_tab_html_body(html_body):
     temp = html_body.split('<body>')[1].split('</body>')[0]
     temp = temp.replace('href="', 'href="resource/').replace('img src="', 'img src="resource/')
-    temp = temp.replace('An_Report1/', '')
-    temp = temp.replace('<table border="0" cellpadding="5" cellspacing="2"  width="60%">', '<table class="table table-bordered">')
-    new = temp.replace('<table border="0" cellpadding="5" cellspacing="2"  width="50%">', '<table class="table table-bordered">')
+    new = temp.replace('An_Report1/', '')
     return new
+
 
 class Report:
 
     def __init__(self, performance_monitor_summary_data, lr_report_summary_data,
-            scenario_name, version, scenario_explain, scenario_result, html_body_list):
+                 scenario_name, version, scenario_explain, scenario_result, html_body_list):
+
         self.pm_summary_data = performance_monitor_summary_data
         self.lr_summary_data = lr_report_summary_data.get('data')
         self.scenario_name = scenario_name.replace('\n', '<br/>').replace(' ', '&nbsp;')
@@ -95,90 +102,30 @@ class Report:
             config.readfp(cfg_file)
         self.ftp_flag = int(config.get('ftp', 'flag'))
         self.ftp_ip = config.get('ftp', 'ip')
-        self.ftp_user =  config.get('ftp', 'user')
+        self.ftp_user = config.get('ftp', 'user')
         self.ftp_password = config.get('ftp', 'password')
 
     def merge_report(self):
-        data_dic = {'scenario_name': self.scenario_name, 'version': self.version,
-                'scenario_explain': self.scenario_explain, 'scenario_result': self.scenario_result,
-                'total_rowspan': self.total_rowspan, 'vuser': self.vuser,
-                'hit': self.hit, 'total_success_rate': self.total_success_rate,
-                'lr_rowspan': self.lr_rowspan, 'pm_rowspan': self.pm_rowspan}
 
-        html_body = report_header % data_dic
-        if self.too_much_data_flag:
-            html_body += report_lr_title2 % data_dic
-        else:
-            html_body += report_lr_title1 % data_dic
-        if self.lr_summary_data[0].name == 'N/A':
-            html_body += report_lr_data_null 
-        else:
-            if self.too_much_data_flag:
-                html_body += report_lr_data_too_much % data_dic
-            else:
-                for i in xrange(len(self.lr_summary_data)):
-                    lr_data = self.lr_summary_data[i]
-                    data_dic['name'] = lr_data.name
-                    data_dic['transaction_pass'] = lr_data.transaction_pass
-                    data_dic['trs'] = lr_data.trs
-                    data_dic['trs_90percent'] = lr_data.trs_90percent
-                    data_dic['tps'] = lr_data.tps
-                    data_dic['success_rate'] = lr_data.success_rate
-                    if i == 0:
-                        html_body += report_lr_data_first % data_dic
-                    else:
-                        html_body += report_lr_data_normal % data_dic
-        
-        html_body += report_pm_header
-        if self.pm_summary_data[0].hostname == 'N/A':
-            html_body += report_pm_body_null
-        else:
-            for data in self.pm_summary_data:
-                data_dic['hostname'] = data.hostname
-                data_dic['cpu'] = data.cpu
-                data_dic['iowait'] = data.iowait
-                data_dic['load1'] = data.load1
-                data_dic['memory'] = data.memory
-                data_dic['write_disk_speed'] = data.write_disk_speed
-                data_dic['read_disk_speed'] = data.read_disk_speed
-                data_dic['eth_received'] = data.eth_received
-                data_dic['eth_transmitted'] = data.eth_transmitted
-                data_dic['mysql_threads_connected'] = data.mysql_threads_connected
-                html_body += report_pm_body_normal % data_dic
-        html_body += report_result % data_dic
-        
-
-        html_body += report_nav_tab_header
-        if len(self.lr_html_body):
-            lr_nav_data_dic = {'hostname': 'window', 'type': u'LoadRunner运行记录', 'id': 999}
-            html_body += report_nav_dropdown_body % lr_nav_data_dic
-            html_body += report_nav_tab_body % lr_nav_data_dic
-            html_body += report_nav_dropdown_end
-        
-        if len(self.pm_html_body):
-            html_body += report_nav_dropdown_body % {'type': u'服务器资源监控记录'}
-            for i in xrange(len(self.pm_summary_data)):
-                data = self.pm_summary_data[i]
-                pm_nav_data_dic = {'hostname': data.hostname, 'id': i}
-                html_body += report_nav_tab_body % pm_nav_data_dic
-            html_body += report_nav_dropdown_end
-        html_body += report_nav_tab_end
-
-        html_body += report_tab_content_header
-        if len(self.lr_html_body):
-            lr_report_data_dic = {'html_body': self.lr_html_body[0], 'id': 999}
-            html_body += report_tab_content_body % lr_report_data_dic
-        
-        if len(self.pm_html_body):
-            for i in xrange(len(self.pm_html_body)):
-                data = self.pm_html_body[i]
-                pm_report_data_dic = {'html_body': data, 'id': i}
-                html_body += report_tab_content_body % pm_report_data_dic
-        html_body += report_end
+        html_body = template.render(scenario_name=self.scenario_name,
+                                    version=self.version,
+                                    scenario_explain=self.scenario_explain,
+                                    scenario_result=self.scenario_result,
+                                    total_rowspan=self.total_rowspan,
+                                    vuser=self.vuser,
+                                    hit=self.hit,
+                                    total_success_rate=self.total_success_rate,
+                                    lr_rowspan=self.lr_rowspan,
+                                    pm_rowspan=self.pm_rowspan,
+                                    too_much_data_flag=self.too_much_data_flag,
+                                    lr_summary_data=self.lr_summary_data,
+                                    pm_summary_data=self.pm_summary_data,
+                                    lr_html_body=self.lr_html_body,
+                                    pm_html_body=self.pm_html_body)
         
         f = open(self.report_file, "w")
         try:
-            f.write(html_body)
+            f.write(html_body.encode('utf-8'))
         finally:
             f.close()
 

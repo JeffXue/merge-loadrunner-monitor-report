@@ -3,7 +3,8 @@ from sgmllib import SGMLParser
 
 server_eth = 'server_eth1'
 
-class ReportSummaryData():
+
+class ReportSummaryData:
 
     def __init__(self, scenario, performance_monitor_summary_data, lr_report_summary_data,
                  lr_rowspan, pm_rowspan, too_much_data_flag, history_ids):
@@ -19,7 +20,7 @@ class ReportSummaryData():
         self.history_ids = history_ids
 
 
-class LRReportHTMLSummaryData():
+class LRReportHTMLSummaryData:
 
     def __init__(self):
         self.name = 'N/A'
@@ -127,7 +128,7 @@ class LRReportHTMLParser(SGMLParser):
                 'total_success_rate': self.success_rate}
 
 
-class PerformanceMonitorHTMLSummaryData():
+class PerformanceMonitorHTMLSummaryData:
 
     def __init__(self):
         self.hostname = 'N/A'

@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+<body>
+
+<div class="container">
+  <h2>{{ scenario_name }}性能测试报告</h2>
+  <table class="bordered">
+    <tr>
+      <th>场景名称</th>
+      <td colspan='6'>{{ scenario_name }}</td>
+      <th>版本</th>
+      <td colspan="3">{{ version }}</td>
+    </tr>
+    <tr>
+      <th>场景说明</th>
+      <td colspan='10'>{{ scenario_explain }}</td>
+    </tr>
+
+    {% if too_much_data_flag %}
+    <tr>
+      <th rowspan="{{ total_rowspan }}">测试数据</th>
+      <th>并发</th>
+      <th colspan="4">事务</th>
+      <th>通过事务数</th>
+      <th>平均响应时间(s)</th>
+      <th>90%%响应时间(s)</th>
+      <th>点击率</th>
+      <th>成功率</th>
+    </tr>
+    {% else %}
+    <tr>
+      <th rowspan="{{ total_rowspan }}">测试数据</th>
+      <th>并发</th>
+      <th colspan="4">事务</th>
+      <th>通过事务数</th>
+      <th>平均响应时间(s)</th>
+      <th>90%响应时间(s)</th>
+      <th>TPS</th>
+      <th>成功率</th>
+    </tr>
+    {% endif %}
+
+    {% if lr_summary_data[0].name == 'N/A' %}
+    <tr>
+      <td align="center" colspan="10">N/A</td>
+    </tr>
+    {% elif too_much_data_flag %}
+    <tr>
+      <td rowspan="{{ lr_rowspan }}">{{ vuser }}</td>
+      <td colspan="7">数据过多，请查看详情</td>
+      <td>{{ hit }}</td>
+      <td>{{ total_success_rate }}(Total)</td>
+    </tr>
+    {% else %}
+      {% for lr_data in lr_summary_data %}
+        {% if loop.first %}
+    <tr>
+      <td rowspan="{{ lr_rowspan }}">{{ vuser }}</td>
+      <td colspan="4">{{ lr_data.name }}</td>
+      <td>{{ lr_data.transaction_pass }}</td>
+      <td>{{ lr_data.trs }}</td>
+      <td>{{ lr_data.trs_90percent }}</td>
+      <td>{{ lr_data.tps }}</td>
+      <td>{{ lr_data.success_rate }}%</td>
+    </tr>
+        {% else %}
+    <tr>
+      <td colspan="4">{{ lr_data.name }}</td>
+      <td>{{ lr_data.transaction_pass }}</td>
+      <td>{{ lr_data.trs }}</td>
+      <td>{{ lr_data.trs_90percent }}</td>
+      <td>{{ lr_data.tps }}</td>
+      <td>{{ lr_data.success_rate }}%</td>
+    </tr>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    <tr>
+      <th>主机名</th>
+      <th>CPU</th>
+      <th>IOWait</th>
+      <th>Load1</th>
+      <th>Memory</th>
+      <th>写磁盘(MB/s)</th>
+      <th>读磁盘(MB/s)</th>
+      <th>Eth接收(MB/s)</th>
+      <th>Eth发送(MB/s)</th>
+      <th>数据库连接数</th>
+    </tr>
+    {% if pm_summary_data[0].hostname == 'N/A' %}
+    <tr>
+      <td colspan="10">N/A</td>
+    </tr>
+    {% else %}
+      {% for data in pm_summary_data %}
+    <tr>
+      <td>{{ data.hostname }}</td>
+      <td>{{ data.cpu }}%</td>
+      <td>{{ data.iowait }}%</td>
+      <td>{{ data.load1 }}</td>
+      <td>{{ data.memory }}%</td>
+      <td>{{ data.write_disk_speed }}</td>
+      <td>{{ data.read_disk_speed }}</td>
+      <td>{{ data.eth_received }}</td>
+      <td>{{ data.eth_transmitted }}</td>
+      <td>{{ data.mysql_threads_connected }}</td>
+    </tr>
+      {% endfor %}
+    {% endif %}
+    <tr>
+      <th>分析结果</th>
+      <td colspan='10'>{{ scenario_result }}</td>
+    </tr>
+  </table>
+
+  <ul id="checkTab" class="nav nav-tabs">
+
+    {% if lr_html_body %}
+    <li class="dropdown">
+      <a href="#" id="LoadRunner运行记录" class="dropdown-toggle" data-toggle="dropdown">LoadRunner运行记录<b class="caret"></b></a>
+      <ul class="dropdown-menu" role="menu" aria-labelledby="LoadRunner运行记录">
+        <li><a href="#999" tabindex="-1" data-toggle="tab">window</a></li>
+      </ul>
+    </li>
+    {% endif %}
+
+    {% if pm_html_body %}
+    <li class="dropdown">
+      <a href="#" id="服务器资源监控记录" class="dropdown-toggle" data-toggle="dropdown">服务器资源监控记录<b class="caret"></b></a>
+      <ul class="dropdown-menu" role="menu" aria-labelledby="服务器资源监控记录">
+        {% for item in pm_summary_data %}
+        <li><a href="#{{ loop.index0 }}" tabindex="-1" data-toggle="tab">{{ item.hostname }}</a></li>
+        {% endfor %}
+      </ul>
+    </li>
+    {% endif %}
+  </ul>
+
+  <div id="checkTabContent" class="tab-content">
+    {% if lr_html_body %}
+    <div class="tab-pane fade" id="999">
+      {{ lr_html_body[0] }}
+    </div>
+    {% endif %}
+
+    {% if pm_html_body %}
+      {% for item in pm_summary_data %}
+    <div class="tab-pane fade" id="{{ loop.index0 }}">
+      {{ pm_html_body[loop.index0] }}
+    </div>
+      {% endfor %}
+    {% endif %}
+
+  </div>
+
+
+</div>
+</body>
+{% endblock%}
